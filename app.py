@@ -553,6 +553,17 @@ def infer_date_grain(prompt, x_column, schema):
     return None
 
 
+def infer_analysis_mode(prompt):
+    prompt_text = str(prompt).lower()
+    detail_markers = ["raw", "actual", "record", "records", "row", "rows", "value", "values", "list", "table"]
+    aggregate_markers = ["compare", "across", "by", "top", "bottom", "highest", "lowest", "average", "avg", "mean", "sum", "total", "count"]
+    if any(marker in prompt_text for marker in detail_markers) and not any(
+        marker in prompt_text for marker in aggregate_markers
+    ):
+        return "detail"
+    return "aggregate"
+
+
 def infer_chart_type_from_prompt(prompt):
     prompt_text = str(prompt).lower()
     chart_keywords = ["bar", "line", "pie", "scatter", "histogram", "treemap", "funnel", "heatmap", "waterfall", "gauge"]
@@ -670,6 +681,13 @@ def query_dataset_preview(connection, table_name, where_clause, params):
 def query_filtered_row_count(connection, table_name, where_clause, params):
     query = f"SELECT COUNT(*) AS total_rows FROM {quote_identifier(table_name)}{where_clause}"
     return int(pd.read_sql_query(query, connection, params=params).iloc[0]["total_rows"])
+
+
+def query_detail_data(connection, schema, filters, limit=50):
+    table_name = schema["table_name"]
+    where_clause, params = build_where_clause(filters)
+    query = f"SELECT * FROM {quote_identifier(table_name)}{where_clause} LIMIT {limit}"
+    return pd.read_sql_query(query, connection, params=params)
 
 
 def aggregate_data(connection, schema, x_column, y_column, aggregation, filters, date_grain=None, result_limit=None, sort_direction="desc"):
@@ -980,6 +998,7 @@ if prompt:
         st.session_state.history.append(prompt)
 
     with st.spinner("AI analyzing data..."):
+        analysis_mode = infer_analysis_mode(prompt)
         schema_columns = list(schema["columns"])
         raw_analysis = interpret_query(prompt, schema_columns)
         analysis = coerce_analysis(prompt, raw_analysis, schema)
@@ -987,19 +1006,29 @@ if prompt:
         result_limit, sort_direction = infer_limit(prompt)
         date_grain = infer_date_grain(prompt, analysis["x_column"], schema)
 
-        data, value_column, x_column, y_column = aggregate_data(
-            connection,
-            schema,
-            analysis["x_column"],
-            analysis["y_column"],
-            analysis["aggregation"],
-            active_filters,
-            date_grain=date_grain,
-            result_limit=result_limit,
-            sort_direction=sort_direction,
-        )
-        if should_use_mean_fallback(prompt, y_column, analysis["aggregation"], data, value_column):
-            analysis["aggregation"] = "mean"
+        if analysis_mode == "detail":
+            data = query_detail_data(connection, schema, active_filters, limit=result_limit or 50)
+            x_column = resolve_column(analysis["x_column"], schema["columns"]) or choose_default_x(schema)
+            y_column = resolve_column(analysis["y_column"], schema["columns"]) or choose_default_y(schema)
+            value_column = y_column
+            chart_type = "scatter" if y_column in data.columns else "bar"
+            auto_chart = chart_type
+            ranked_data, trend_data = build_supporting_views(data.head(10), x_column, value_column)
+            metrics = build_summary_metrics(data, value_column) if value_column in data.columns else {
+                "row_count": int(len(data)),
+                "total": 0.0,
+                "max": 0.0,
+                "avg": 0.0,
+            }
+            insight = "Showing raw records instead of aggregated results based on the query wording."
+            resolution_note = "This query was interpreted as a detail request, so the dashboard is showing raw dataset rows."
+            query_interpretation = build_query_interpretation(analysis, value_column, auto_chart)
+            confidence_score = compute_confidence(analysis)
+            chart_reason = "Scatter view was selected to preview raw values without aggregating them."
+            display_x = format_metric_label(x_column)
+            display_y = format_metric_label(value_column)
+            fig = generate_chart(data.head(25), chart_type, x_column, value_column)
+        else:
             data, value_column, x_column, y_column = aggregate_data(
                 connection,
                 schema,
@@ -1011,21 +1040,34 @@ if prompt:
                 result_limit=result_limit,
                 sort_direction=sort_direction,
             )
+            if should_use_mean_fallback(prompt, y_column, analysis["aggregation"], data, value_column):
+                analysis["aggregation"] = "mean"
+                data, value_column, x_column, y_column = aggregate_data(
+                    connection,
+                    schema,
+                    analysis["x_column"],
+                    analysis["y_column"],
+                    analysis["aggregation"],
+                    active_filters,
+                    date_grain=date_grain,
+                    result_limit=result_limit,
+                    sort_direction=sort_direction,
+                )
 
-        auto_chart = infer_auto_chart(x_column, analysis["aggregation"], data)
-        prompt_chart = infer_chart_type_from_prompt(prompt)
-        chart_type = chart_override.lower() if chart_override != "Auto" else prompt_chart or analysis["chart_type"] or auto_chart
+            auto_chart = infer_auto_chart(x_column, analysis["aggregation"], data)
+            prompt_chart = infer_chart_type_from_prompt(prompt)
+            chart_type = chart_override.lower() if chart_override != "Auto" else prompt_chart or analysis["chart_type"] or auto_chart
 
-        fig = generate_chart(data, chart_type, x_column, value_column)
-        ranked_data, trend_data = build_supporting_views(data, x_column, value_column)
-        metrics = build_summary_metrics(data, value_column)
-        insight = generate_insight(prompt, x_column, analysis["aggregation"], metrics)
-        resolution_note = build_resolution_note(analysis, prompt, schema)
-        query_interpretation = build_query_interpretation(analysis, value_column, auto_chart)
-        confidence_score = compute_confidence(analysis)
-        chart_reason = explain_chart_choice(chart_type, x_column, data)
-        display_x = format_metric_label(x_column)
-        display_y = format_metric_label(value_column)
+            fig = generate_chart(data, chart_type, x_column, value_column)
+            ranked_data, trend_data = build_supporting_views(data, x_column, value_column)
+            metrics = build_summary_metrics(data, value_column)
+            insight = generate_insight(prompt, x_column, analysis["aggregation"], metrics)
+            resolution_note = build_resolution_note(analysis, prompt, schema)
+            query_interpretation = build_query_interpretation(analysis, value_column, auto_chart)
+            confidence_score = compute_confidence(analysis)
+            chart_reason = explain_chart_choice(chart_type, x_column, data)
+            display_x = format_metric_label(x_column)
+            display_y = format_metric_label(value_column)
 
     st.session_state.last_analysis = {
         "x_column": x_column,
