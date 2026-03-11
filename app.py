@@ -494,6 +494,11 @@ def infer_aggregation_from_prompt(prompt):
     prompt_text = str(prompt).lower()
     explicit_average = any(token in prompt_text for token in ["average", "avg", "mean"])
     duration_comparison = any(token in prompt_text for token in ["duration", "time"])
+    ratio_metric_comparison = any(token in prompt_text for token in ["roi", "engagement", "engagement score"]) and any(
+        token in prompt_text for token in ["compare", "across", "by", "highest", "lowest", "top", "bottom", "best", "worst", "show"]
+    )
+    if ratio_metric_comparison and not any(token in prompt_text for token in ["sum", "total"]):
+        return "mean"
     if duration_comparison and explicit_average:
         return "mean"
     if explicit_average:
