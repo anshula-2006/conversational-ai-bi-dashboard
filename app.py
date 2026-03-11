@@ -710,6 +710,20 @@ def aggregate_data(connection, schema, x_column, y_column, aggregation, filters,
         return fallback, "Count", fallback_x, fallback_y
 
 
+def should_use_mean_fallback(prompt, y_column, aggregation, grouped_data, value_column):
+    if aggregation not in {"max", "min"}:
+        return False
+    prompt_text = str(prompt).lower()
+    if str(y_column).strip().lower() != "duration":
+        return False
+    if value_column not in grouped_data.columns or grouped_data.empty:
+        return False
+    if not any(token in prompt_text for token in ["highest", "lowest", "top", "bottom", "best", "worst"]):
+        return False
+    numeric_series = pd.to_numeric(grouped_data[value_column], errors="coerce").dropna()
+    return numeric_series.nunique() <= 1
+
+
 def build_summary_metrics(dataframe, value_column):
     numeric_series = pd.to_numeric(dataframe[value_column], errors="coerce").fillna(0)
     return {
@@ -966,6 +980,19 @@ if prompt:
             result_limit=result_limit,
             sort_direction=sort_direction,
         )
+        if should_use_mean_fallback(prompt, y_column, analysis["aggregation"], data, value_column):
+            analysis["aggregation"] = "mean"
+            data, value_column, x_column, y_column = aggregate_data(
+                connection,
+                schema,
+                analysis["x_column"],
+                analysis["y_column"],
+                analysis["aggregation"],
+                active_filters,
+                date_grain=date_grain,
+                result_limit=result_limit,
+                sort_direction=sort_direction,
+            )
 
         auto_chart = infer_auto_chart(x_column, analysis["aggregation"], data)
         prompt_chart = infer_chart_type_from_prompt(prompt)
