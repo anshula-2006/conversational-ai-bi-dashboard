@@ -9,9 +9,7 @@ import streamlit as st
 from charts import generate_chart
 from llm_engine import generate_insight, interpret_query
 
-
 st.set_page_config(page_title="AI BI Dashboard", layout="wide")
-
 
 st.markdown(
     """
@@ -95,11 +93,127 @@ st.markdown(
     font-size: 0.85rem;
     color: #5a6f84;
 }
+
+.landing-shell {
+    display: grid;
+    grid-template-columns: 1.25fr 0.95fr;
+    gap: 24px;
+    align-items: stretch;
+    margin-top: 10px;
+}
+
+.landing-card {
+    background:
+        radial-gradient(circle at top right, rgba(255,255,255,0.14), transparent 24%),
+        linear-gradient(135deg, #0f2f4f 0%, #174e79 58%, #1f6aa5 100%);
+    color: white;
+    border-radius: 26px;
+    padding: 34px;
+    box-shadow: 0 28px 60px rgba(15, 47, 79, 0.20);
+}
+
+.landing-eyebrow {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+
+.landing-title {
+    font-size: 2.6rem;
+    line-height: 1.05;
+    font-weight: 800;
+    margin: 0 0 14px 0;
+    max-width: 9ch;
+}
+
+.landing-copy {
+    font-size: 1rem;
+    line-height: 1.7;
+    max-width: 54ch;
+    opacity: 0.92;
+    margin-bottom: 22px;
+}
+
+.landing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.landing-tile {
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 18px;
+    padding: 16px;
+}
+
+.landing-tile-title {
+    font-size: 0.84rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.76;
+    margin-bottom: 8px;
+}
+
+.landing-tile-copy {
+    font-size: 0.94rem;
+    line-height: 1.45;
+}
+
+.landing-side {
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    border-radius: 24px;
+    padding: 28px;
+    border: 1px solid rgba(24, 53, 88, 0.08);
+    box-shadow: 0 20px 44px rgba(20, 41, 61, 0.08);
+}
+
+.landing-side-title {
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: #17324d;
+    margin-bottom: 12px;
+}
+
+.landing-list {
+    margin: 0;
+    padding-left: 1.15rem;
+    color: #4e6479;
+    line-height: 1.8;
+}
+
+.landing-highlight {
+    margin-top: 18px;
+    padding: 16px 18px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #edf5ff 0%, #f8fbff 100%);
+    border: 1px solid rgba(31, 106, 165, 0.12);
+    color: #184264;
+}
+
+@media (max-width: 1100px) {
+    .landing-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-title {
+        max-width: none;
+    }
+
+    .landing-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 """,
     unsafe_allow_html=True,
 )
-
 
 if "history" not in st.session_state:
     st.session_state.history = []
@@ -643,7 +757,47 @@ st.sidebar.title("Dashboard Controls")
 
 uploaded = st.sidebar.file_uploader("Upload CSV Dataset", type=["csv"])
 if uploaded is None:
-    st.info("Upload a CSV file to load it into the analytics database and start exploring.")
+    st.markdown(
+        """
+<div class="landing-shell">
+    <section class="landing-card">
+        <div class="landing-eyebrow">Conversational BI</div>
+        <h1 class="landing-title">Turn a CSV into an executive dashboard instantly.</h1>
+        <p class="landing-copy">
+            Upload any business dataset, ask a question in plain English, and get a SQL-backed dashboard with
+            KPIs, visual recommendations, and a short AI insight.
+        </p>
+        <div class="landing-grid">
+            <div class="landing-tile">
+                <div class="landing-tile-title">Ask</div>
+                <div class="landing-tile-copy">Use natural language instead of writing queries or manual formulas.</div>
+            </div>
+            <div class="landing-tile">
+                <div class="landing-tile-title">Analyze</div>
+                <div class="landing-tile-copy">The app validates the query against your schema and runs database-backed aggregations.</div>
+            </div>
+            <div class="landing-tile">
+                <div class="landing-tile-title">Present</div>
+                <div class="landing-tile-copy">Get interactive visuals, KPI cards, exports, and dashboard-ready summaries.</div>
+            </div>
+        </div>
+    </section>
+    <aside class="landing-side">
+        <div class="landing-side-title">What You Can Demo</div>
+        <ul class="landing-list">
+            <li>Upload a business CSV and inspect the generated schema.</li>
+            <li>Ask natural-language questions like revenue by category or top 5 segments.</li>
+            <li>Switch chart types, apply filters, and export the visual data.</li>
+            <li>Use follow-up prompts like "Now show the same analysis as a pie chart".</li>
+        </ul>
+        <div class="landing-highlight">
+            <strong>Start here:</strong> use the upload control in the left panel to load your dataset and unlock the dashboard workspace.
+        </div>
+    </aside>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
     st.stop()
 
 file_bytes = uploaded.getvalue()
@@ -758,7 +912,6 @@ if show_architecture:
         "User query is mapped to schema fields, validated against the uploaded dataset, aggregated with SQL over SQLite, and rendered as interactive visuals."
     )
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 if prompt:
     st.session_state.history.append(prompt)
@@ -893,7 +1046,6 @@ if prompt:
         st.caption("Use this section during judging to show exactly how the query was translated into dashboard logic.")
 
     st.markdown("</div>", unsafe_allow_html=True)
-
 
 st.sidebar.markdown("### Query History")
 for query in st.session_state.history[-10:]:

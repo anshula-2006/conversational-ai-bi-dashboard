@@ -1,10 +1,8 @@
 import plotly.express as px
 import plotly.graph_objects as go
 
-
 def generate_chart(data, chart_type, x, y):
     safe_chart = str(chart_type).lower()
-
     try:
         if safe_chart == "bar":
             fig = px.bar(data, x=x, y=y, color=x)
@@ -51,7 +49,6 @@ def generate_chart(data, chart_type, x, y):
             fig = px.bar(data, x=x, y=y, color=x)
     except Exception:
         fig = px.bar(data, x=x, y=y)
-
     fig.update_layout(
         template="plotly_white",
         height=500,
