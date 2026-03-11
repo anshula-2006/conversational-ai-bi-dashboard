@@ -905,17 +905,6 @@ with preview_col:
     st.markdown('<div class="section-title">Dataset Preview</div>', unsafe_allow_html=True)
     st.dataframe(filtered_preview if not filtered_preview.empty else preview_df, use_container_width=True, height=220)
 
-if show_architecture:
-    st.markdown('<div class="section-title">Architecture Flow</div>', unsafe_allow_html=True)
-    flow_a, flow_b, flow_c, flow_d = st.columns(4)
-    flow_a.metric("1", "Prompt")
-    flow_b.metric("2", "LLM Parse")
-    flow_c.metric("3", "SQLite Query")
-    flow_d.metric("4", "Plotly Dashboard")
-    st.caption(
-        "User query is mapped to schema fields, validated against the uploaded dataset, aggregated with SQL over SQLite, and rendered as interactive visuals."
-    )
-
 if prompt:
     st.session_state.history.append(prompt)
 
@@ -962,13 +951,6 @@ if prompt:
         "chart_type": chart_type,
     }
 
-    st.markdown('<div class="section-title">Executive Summary</div>', unsafe_allow_html=True)
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Rows in Visual", metrics["row_count"])
-    k2.metric("Total", format_number(metrics["total"]))
-    k3.metric("Highest", format_number(metrics["max"]))
-    k4.metric("Average", format_number(metrics["avg"]))
-
     st.markdown('<div class="section-title">Primary Visual</div>', unsafe_allow_html=True)
     col1, col2 = st.columns([2.2, 1], gap="large")
 
@@ -988,6 +970,24 @@ if prompt:
         )
         st.caption(f"Auto chart recommendation: {auto_chart}")
         st.caption(chart_reason)
+
+    st.markdown('<div class="section-title">Executive Summary</div>', unsafe_allow_html=True)
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Rows in Visual", metrics["row_count"])
+    k2.metric("Total", format_number(metrics["total"]))
+    k3.metric("Highest", format_number(metrics["max"]))
+    k4.metric("Average", format_number(metrics["avg"]))
+
+    if show_architecture:
+        st.markdown('<div class="section-title">Architecture Flow</div>', unsafe_allow_html=True)
+        flow_a, flow_b, flow_c, flow_d = st.columns(4)
+        flow_a.metric("1", "Prompt")
+        flow_b.metric("2", "LLM Parse")
+        flow_c.metric("3", "SQLite Query")
+        flow_d.metric("4", "Plotly Dashboard")
+        st.caption(
+            "User query is mapped to schema fields, validated against the uploaded dataset, aggregated with SQL over SQLite, and rendered as interactive visuals."
+        )
 
     st.markdown('<div class="section-title">Analysis Workspace</div>', unsafe_allow_html=True)
     tab_overview, tab_supporting, tab_details, tab_export = st.tabs(
