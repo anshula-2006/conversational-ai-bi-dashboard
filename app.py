@@ -941,14 +941,7 @@ show_architecture = st.sidebar.toggle("Show Architecture", value=True)
 st.markdown('<div class="section-title">Quick Analysis Templates</div>', unsafe_allow_html=True)
 col_a, col_b, col_c = st.columns(3, gap="small")
 
-if col_a.button("Revenue by Category"):
-    prompt = f"Show {choose_default_y(schema)} by {choose_default_x(schema)}"
-elif col_b.button("Count by Category"):
-    prompt = f"Show count by {choose_default_x(schema)}"
-elif col_c.button("Average Metric"):
-    prompt = f"Show average {choose_default_y(schema)} by {choose_default_x(schema)}"
-else:
-    prompt = st.text_input("Ask a question", key="prompt_input")
+prompt = st.text_input("Ask a question", key="prompt_input")
 
 with st.expander("Example Questions", expanded=True):
     example_questions = generate_example_questions(schema)
