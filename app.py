@@ -798,16 +798,27 @@ def format_metric_label(label):
 def infer_auto_chart(x_column, aggregation, grouped_data):
     lowered_name = x_column.lower()
     unique_groups = grouped_data[x_column].nunique(dropna=False) if x_column in grouped_data.columns else 0
+    row_count = len(grouped_data)
 
     if "date" in lowered_name or "time" in lowered_name:
         return "line"
+    if row_count <= 1:
+        return "gauge"
     if aggregation == "count" and unique_groups <= 6:
+        return "pie"
+    if aggregation == "count" and unique_groups <= 12:
+        return "bar"
+    if unique_groups <= 5:
         return "pie"
     if unique_groups <= 8:
         return "bar"
-    if unique_groups <= 20:
+    if unique_groups <= 14:
+        return "treemap"
+    if unique_groups <= 24:
         return "line"
-    return "bar"
+    if unique_groups <= 40:
+        return "scatter"
+    return "histogram"
 
 
 def build_supporting_views(grouped_data, x_column, value_column):
