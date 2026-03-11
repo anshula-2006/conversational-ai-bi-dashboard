@@ -948,12 +948,6 @@ col_a, col_b, col_c = st.columns(3, gap="small")
 
 prompt = st.text_input("Ask a question", key="prompt_input")
 
-with st.expander("Example Questions", expanded=True):
-    example_questions = generate_example_questions(schema)
-    st.markdown(
-        "\n".join(f"- {question}" for question in example_questions)
-    )
-
 where_clause, where_params = build_where_clause(active_filters)
 filtered_preview = query_dataset_preview(connection, schema["table_name"], where_clause, where_params)
 filtered_row_count = query_filtered_row_count(connection, schema["table_name"], where_clause, where_params)
