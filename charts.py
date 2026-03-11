@@ -159,6 +159,7 @@ def generate_chart(data, chart_type, x, y):
             marker_line_color="rgba(255,255,255,0.85)",
             marker_line_width=1.4,
             hovertemplate=f"{display_x}: %{{y}}<br>{display_y}: %{{x:,.2f}}<extra></extra>",
+            selector=dict(type="bar"),
         )
         fig.update_xaxes(title_text=display_y, showgrid=True, gridcolor=GRID_COLOR)
         fig.update_yaxes(title_text="")
@@ -169,16 +170,18 @@ def generate_chart(data, chart_type, x, y):
             fill="tozeroy",
             fillcolor="rgba(78, 165, 217, 0.10)",
             hovertemplate=f"{display_x}: %{{x}}<br>{display_y}: %{{y:,.2f}}<extra></extra>",
+            selector=dict(type="scatter"),
         )
         fig.update_layout(showlegend=False)
         fig.update_xaxes(tickangle=-25, showgrid=False, automargin=True)
         fig.update_yaxes(showgrid=True, gridcolor=GRID_COLOR, automargin=True)
-        fig.update_traces(cliponaxis=False)
+        fig.update_traces(cliponaxis=False, selector=dict(type="scatter"))
     elif safe_chart == "scatter":
         fig.update_layout(coloraxis_colorbar=dict(title=display_y))
         fig.update_traces(
             marker=dict(size=12, line=dict(width=1.5, color="white"), opacity=0.82),
             hovertemplate=f"{display_x}: %{{x}}<br>{display_y}: %{{y:,.2f}}<extra></extra>",
+            selector=dict(type="scatter"),
         )
     elif safe_chart == "pie":
         fig.update_traces(
@@ -190,6 +193,7 @@ def generate_chart(data, chart_type, x, y):
             pull=[0.04] + [0.01] * max(len(plot_data) - 1, 0),
             sort=False,
             hovertemplate=f"{display_x}: %{{label}}<br>{display_y}: %{{value:,.2f}}<br>Share: %{{percent}}<extra></extra>",
+            selector=dict(type="pie"),
         )
         fig.update_layout(
             legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02),
@@ -207,13 +211,14 @@ def generate_chart(data, chart_type, x, y):
             ],
         )
     elif safe_chart == "histogram":
-        fig.update_traces(marker_line_color="white", marker_line_width=1)
+        fig.update_traces(marker_line_color="white", marker_line_width=1, selector=dict(type="histogram"))
         fig.update_layout(showlegend=False)
     elif safe_chart == "treemap":
         fig.update_traces(
             textinfo="label",
             marker=dict(line=dict(width=2, color="white")),
             hovertemplate=f"{display_x}: %{{label}}<br>{display_y}: %{{value:,.2f}}<extra></extra>",
+            selector=dict(type="treemap"),
         )
     elif safe_chart == "heatmap":
         fig.update_layout(coloraxis_colorbar=dict(title=display_y))
