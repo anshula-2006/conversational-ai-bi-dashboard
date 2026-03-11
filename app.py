@@ -1056,7 +1056,8 @@ if prompt:
 
             auto_chart = infer_auto_chart(x_column, analysis["aggregation"], data)
             prompt_chart = infer_chart_type_from_prompt(prompt)
-            chart_type = chart_override.lower() if chart_override != "Auto" else prompt_chart or analysis["chart_type"] or auto_chart
+            llm_chart = analysis["chart_type"] if analysis.get("chart_type") not in {"", "bar"} else None
+            chart_type = chart_override.lower() if chart_override != "Auto" else prompt_chart or auto_chart or llm_chart or "bar"
 
             fig = generate_chart(data, chart_type, x_column, value_column)
             ranked_data, trend_data = build_supporting_views(data, x_column, value_column)
