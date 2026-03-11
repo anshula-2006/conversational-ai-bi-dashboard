@@ -570,6 +570,10 @@ def infer_chart_type_from_prompt(prompt):
     for chart_name in chart_keywords:
         if chart_name in prompt_text:
             return chart_name
+    if any(token in prompt_text for token in ["distribution", "spread", "frequency"]):
+        return "histogram"
+    if any(token in prompt_text for token in ["compare", "comparison", "highest", "lowest", "top", "bottom", "across"]):
+        return "bar"
     return None
 
 
