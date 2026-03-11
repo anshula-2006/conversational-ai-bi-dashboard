@@ -705,6 +705,20 @@ elif col_c.button("Average Metric"):
 else:
     prompt = st.text_input("Ask a question")
 
+with st.expander("Example Questions", expanded=True):
+    st.markdown(
+        f"""
+- Show {choose_default_y(schema)} by {choose_default_x(schema)}
+- Show average {choose_default_y(schema)} by {choose_default_x(schema)}
+- Show count by {choose_default_x(schema)}
+- Which {choose_default_x(schema)} has the highest {choose_default_y(schema)}?
+- Show top 5 {choose_default_x(schema)} by {choose_default_y(schema)}
+- Show bottom 5 {choose_default_x(schema)} by {choose_default_y(schema)}
+- Now show the same analysis as a pie chart
+- Instead, make it average by {choose_default_x(schema)}
+"""
+    )
+
 where_clause, where_params = build_where_clause(active_filters)
 filtered_preview = query_dataset_preview(connection, schema["table_name"], where_clause, where_params)
 filtered_row_count = query_filtered_row_count(connection, schema["table_name"], where_clause, where_params)
@@ -823,22 +837,37 @@ if prompt:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    interpret_col, export_col = st.columns([1.2, 1], gap="large")
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Analysis Workspace</div>', unsafe_allow_html=True)
+    tab_overview, tab_supporting, tab_details, tab_export = st.tabs(
+        ["Interpretation", "Supporting Visuals", "Detail Table", "Export"]
+    )
 
-    with interpret_col:
-        st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Query Interpretation</div>', unsafe_allow_html=True)
+    with tab_overview:
         st.dataframe(query_interpretation, use_container_width=True, hide_index=True)
-        if date_grain:
-            st.caption(f"Time grouping applied: {date_grain}")
-        if result_limit:
-            limit_label = "top" if sort_direction == "desc" else "bottom"
-            st.caption(f"Result shaping applied: {limit_label} {result_limit}")
-        st.markdown("</div>", unsafe_allow_html=True)
+        meta_left, meta_right = st.columns(2)
+        with meta_left:
+            if date_grain:
+                st.caption(f"Time grouping applied: {date_grain}")
+        with meta_right:
+            if result_limit:
+                limit_label = "top" if sort_direction == "desc" else "bottom"
+                st.caption(f"Result shaping applied: {limit_label} {result_limit}")
 
-    with export_col:
-        st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Export & Reuse</div>', unsafe_allow_html=True)
+    with tab_supporting:
+        support_left, support_right = st.columns(2, gap="large")
+        with support_left:
+            st.markdown("Top Categories")
+            st.plotly_chart(generate_chart(ranked_data, "bar", x_column, value_column), use_container_width=True)
+        with support_right:
+            st.markdown("Trend / Pattern View")
+            secondary_chart = "line" if trend_data[x_column].nunique(dropna=False) > 2 else "bar"
+            st.plotly_chart(generate_chart(trend_data, secondary_chart, x_column, value_column), use_container_width=True)
+
+    with tab_details:
+        st.dataframe(data, use_container_width=True, height=320)
+
+    with tab_export:
         st.download_button(
             label="Download Visual Data CSV",
             data=data.to_csv(index=False).encode("utf-8"),
@@ -854,45 +883,10 @@ if prompt:
             use_container_width=True,
         )
         st.caption("Use this section during judging to show exactly how the query was translated into dashboard logic.")
-        st.markdown("</div>", unsafe_allow_html=True)
 
-    support_left, support_right = st.columns(2, gap="large")
-
-    with support_left:
-        st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Top Categories</div>', unsafe_allow_html=True)
-        st.plotly_chart(generate_chart(ranked_data, "bar", x_column, value_column), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with support_right:
-        st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Trend / Pattern View</div>', unsafe_allow_html=True)
-        secondary_chart = "line" if trend_data[x_column].nunique(dropna=False) > 2 else "bar"
-        st.plotly_chart(generate_chart(trend_data, secondary_chart, x_column, value_column), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Detail Table</div>', unsafe_allow_html=True)
-    st.dataframe(data, use_container_width=True, height=320)
     st.markdown("</div>", unsafe_allow_html=True)
 
 
 st.sidebar.markdown("### Query History")
 for query in st.session_state.history[-10:]:
     st.sidebar.write(query)
-
-
-st.divider()
-st.markdown("### Example Questions")
-st.markdown(
-    f"""
-- Show {choose_default_y(schema)} by {choose_default_x(schema)}
-- Show average {choose_default_y(schema)} by {choose_default_x(schema)}
-- Show count by {choose_default_x(schema)}
-- Which {choose_default_x(schema)} has the highest {choose_default_y(schema)}?
-- Show top 5 {choose_default_x(schema)} by {choose_default_y(schema)}
-- Show bottom 5 {choose_default_x(schema)} by {choose_default_y(schema)}
-- Now show the same analysis as a pie chart
-- Instead, make it average by {choose_default_x(schema)}
-"""
-)
