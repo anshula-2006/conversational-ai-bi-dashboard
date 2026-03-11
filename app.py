@@ -444,6 +444,11 @@ def infer_columns_from_prompt(prompt, schema):
 
 def infer_aggregation_from_prompt(prompt):
     prompt_text = str(prompt).lower()
+    duration_comparison = any(token in prompt_text for token in ["duration", "time"]) and any(
+        token in prompt_text for token in ["highest", "top", "maximum", "max", "best", "lowest", "minimum", "min", "worst"]
+    )
+    if duration_comparison:
+        return "mean"
     if any(token in prompt_text for token in ["average", "avg", "mean"]):
         return "mean"
     if any(token in prompt_text for token in ["count", "number of", "how many"]):
