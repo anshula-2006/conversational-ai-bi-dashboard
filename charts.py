@@ -171,8 +171,9 @@ def generate_chart(data, chart_type, x, y):
             hovertemplate=f"{display_x}: %{{x}}<br>{display_y}: %{{y:,.2f}}<extra></extra>",
         )
         fig.update_layout(showlegend=False)
-        fig.update_xaxes(tickangle=-25, showgrid=False)
-        fig.update_yaxes(showgrid=True, gridcolor=GRID_COLOR)
+        fig.update_xaxes(tickangle=-25, showgrid=False, automargin=True)
+        fig.update_yaxes(showgrid=True, gridcolor=GRID_COLOR, automargin=True)
+        fig.update_traces(cliponaxis=False)
     elif safe_chart == "scatter":
         fig.update_layout(coloraxis_colorbar=dict(title=display_y))
         fig.update_traces(
