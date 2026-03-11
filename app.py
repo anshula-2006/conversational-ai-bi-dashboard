@@ -1,6 +1,7 @@
 import re
 import sqlite3
 import uuid
+from io import BytesIO
 
 import pandas as pd
 import streamlit as st
@@ -118,6 +119,7 @@ def quote_identifier(value):
 def prepare_database(file_bytes, file_name):
     connection = sqlite3.connect(":memory:", check_same_thread=False)
     table_name = f"dataset_{uuid.uuid4().hex[:8]}"
+    file_buffer = BytesIO(file_bytes)
 
     preview_df = None
     row_count = 0
@@ -126,7 +128,7 @@ def prepare_database(file_bytes, file_name):
     date_columns = []
     columns = []
 
-    for chunk_index, chunk in enumerate(pd.read_csv(file_bytes, chunksize=50000)):
+    for chunk_index, chunk in enumerate(pd.read_csv(file_buffer, chunksize=50000)):
         chunk.columns = [normalize_identifier(column) for column in chunk.columns]
         detected_dates = []
         for column in chunk.columns:
