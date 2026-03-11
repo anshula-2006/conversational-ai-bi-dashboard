@@ -961,6 +961,7 @@ filtered_row_count = query_filtered_row_count(connection, schema["table_name"], 
 overview_col, preview_col = st.columns([1.35, 1], gap="large")
 
 with overview_col:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Dataset Overview</div>', unsafe_allow_html=True)
     profile_left, profile_mid, profile_right = st.columns(3)
     profile_left.metric("Numeric Fields", len(schema["numeric_columns"]))
@@ -972,10 +973,13 @@ with overview_col:
         + "</div>",
         unsafe_allow_html=True,
     )
+    st.markdown("</div>", unsafe_allow_html=True)
 
 with preview_col:
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Dataset Preview</div>', unsafe_allow_html=True)
     st.dataframe(filtered_preview if not filtered_preview.empty else preview_df, use_container_width=True, height=220)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 if prompt:
     st.session_state.history.append(prompt)
@@ -1038,6 +1042,7 @@ if prompt:
         "chart_type": chart_type,
     }
 
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Primary Visual</div>', unsafe_allow_html=True)
     col1, col2 = st.columns([2.2, 1], gap="large")
 
@@ -1057,15 +1062,19 @@ if prompt:
         )
         st.caption(f"Auto chart recommendation: {auto_chart}")
         st.caption(chart_reason)
+    st.markdown("</div>", unsafe_allow_html=True)
 
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Executive Summary</div>', unsafe_allow_html=True)
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Rows in Visual", metrics["row_count"])
     k2.metric("Total", format_number(metrics["total"]))
     k3.metric("Highest", format_number(metrics["max"]))
     k4.metric("Average", format_number(metrics["avg"]))
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if show_architecture:
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.markdown('<div class="section-title">Architecture Flow</div>', unsafe_allow_html=True)
         flow_a, flow_b, flow_c, flow_d = st.columns(4)
         flow_a.metric("1", "Prompt")
@@ -1075,7 +1084,9 @@ if prompt:
         st.caption(
             "User query is mapped to schema fields, validated against the uploaded dataset, aggregated with SQL over SQLite, and rendered as interactive visuals."
         )
+        st.markdown("</div>", unsafe_allow_html=True)
 
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Analysis Workspace</div>', unsafe_allow_html=True)
     tab_overview, tab_supporting, tab_details, tab_export = st.tabs(
         ["Interpretation", "Supporting Visuals", "Detail Table", "Export"]
@@ -1129,6 +1140,7 @@ if prompt:
             use_container_width=True,
         )
         st.caption("Use this section during judging to show exactly how the query was translated into dashboard logic.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 st.sidebar.markdown("### Query History")
 for query in st.session_state.history[-10:]:
