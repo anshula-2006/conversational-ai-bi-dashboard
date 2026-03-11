@@ -321,25 +321,47 @@ def choose_default_y(schema):
 
 def generate_example_questions(schema):
     x_column = choose_default_x(schema)
-    y_column = choose_default_y(schema)
     date_column = schema["date_columns"][0] if schema["date_columns"] else None
-    secondary_numeric = schema["numeric_columns"][1] if len(schema["numeric_columns"]) > 1 else y_column
     duration_column = next((column for column in schema["numeric_columns"] if column.lower() == "duration"), None)
+    preferred_metric = choose_default_y(schema)
+    ranked_metrics = [
+        "Revenue",
+        "Conversions",
+        "Clicks",
+        "Impressions",
+        "Leads",
+        "ROI",
+        "Engagement_Score",
+    ]
+    for candidate in ranked_metrics:
+        if candidate in schema["numeric_columns"]:
+            preferred_metric = candidate
+            break
+
+    secondary_metric = next(
+        (column for column in schema["numeric_columns"] if column != preferred_metric and column.lower() != "duration"),
+        preferred_metric,
+    )
 
     examples = [
-        f"Show {y_column} by {x_column}",
-        f"Which {x_column} has the highest {y_column}?",
-        f"Show top 5 {x_column} by {y_column}",
-        f"Show average {secondary_numeric} by {x_column}",
+        f"Show {preferred_metric} by {x_column}",
+        f"Show top 5 {x_column} by {preferred_metric}",
+        f"Which {x_column} has the highest {preferred_metric}?",
+        f"Show average {secondary_metric} by {x_column}",
     ]
 
     if duration_column:
-        examples.append(f"Which {x_column} has the highest {duration_column} in days?")
+        examples.append(f"Show average {duration_column} in days by {x_column}")
 
     if date_column:
-        examples.append(f"Show {y_column} by {date_column}")
+        examples.append(f"Show {preferred_metric} by {date_column}")
 
-    examples.append("Now show the same analysis as a pie chart")
+    examples.extend(
+        [
+            f"Show count by {x_column}",
+            "Now show the same analysis as a pie chart",
+        ]
+    )
     return examples[:8]
 
 
