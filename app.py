@@ -319,6 +319,30 @@ def choose_default_y(schema):
     return schema["columns"][0]
 
 
+def generate_example_questions(schema):
+    x_column = choose_default_x(schema)
+    y_column = choose_default_y(schema)
+    date_column = schema["date_columns"][0] if schema["date_columns"] else None
+    secondary_numeric = schema["numeric_columns"][1] if len(schema["numeric_columns"]) > 1 else y_column
+    duration_column = next((column for column in schema["numeric_columns"] if column.lower() == "duration"), None)
+
+    examples = [
+        f"Show {y_column} by {x_column}",
+        f"Which {x_column} has the highest {y_column}?",
+        f"Show top 5 {x_column} by {y_column}",
+        f"Show average {secondary_numeric} by {x_column}",
+    ]
+
+    if duration_column:
+        examples.append(f"Which {x_column} has the highest {duration_column} in days?")
+
+    if date_column:
+        examples.append(f"Show {y_column} by {date_column}")
+
+    examples.append("Now show the same analysis as a pie chart")
+    return examples[:8]
+
+
 def tokenize_text(value):
     return [token for token in re.split(r"[^a-z0-9]+", str(value).lower()) if token]
 
@@ -444,18 +468,27 @@ def infer_columns_from_prompt(prompt, schema):
 
 def infer_aggregation_from_prompt(prompt):
     prompt_text = str(prompt).lower()
-    duration_comparison = any(token in prompt_text for token in ["duration", "time"]) and any(
-        token in prompt_text for token in ["highest", "top", "maximum", "max", "best", "lowest", "minimum", "min", "worst"]
-    )
-    if duration_comparison:
+    explicit_average = any(token in prompt_text for token in ["average", "avg", "mean"])
+    duration_comparison = any(token in prompt_text for token in ["duration", "time"])
+    if duration_comparison and explicit_average:
         return "mean"
-    if any(token in prompt_text for token in ["average", "avg", "mean"]):
+    if explicit_average:
         return "mean"
     if any(token in prompt_text for token in ["count", "number of", "how many"]):
         return "count"
-    if any(token in prompt_text for token in ["highest", "top", "maximum", "max", "best"]):
+    if duration_comparison and any(token in prompt_text for token in ["highest", "top", "maximum", "max", "best"]):
         return "max"
-    if any(token in prompt_text for token in ["lowest", "minimum", "min", "worst"]):
+    if duration_comparison and any(token in prompt_text for token in ["lowest", "bottom", "minimum", "min", "worst"]):
+        return "min"
+    # Ranking questions like "which category has the highest revenue"
+    # usually mean compare grouped totals, not MAX(value) within each group.
+    if any(token in prompt_text for token in ["maximum", "max"]) and not any(
+        token in prompt_text for token in ["highest", "top", "best"]
+    ):
+        return "max"
+    if any(token in prompt_text for token in ["minimum", "min"]) and not any(
+        token in prompt_text for token in ["lowest", "bottom", "worst"]
+    ):
         return "min"
     return "sum"
 
@@ -880,17 +913,9 @@ else:
     prompt = st.text_input("Ask a question")
 
 with st.expander("Example Questions", expanded=True):
+    example_questions = generate_example_questions(schema)
     st.markdown(
-        f"""
-- Show {choose_default_y(schema)} by {choose_default_x(schema)}
-- Show average {choose_default_y(schema)} by {choose_default_x(schema)}
-- Show count by {choose_default_x(schema)}
-- Which {choose_default_x(schema)} has the highest {choose_default_y(schema)}?
-- Show top 5 {choose_default_x(schema)} by {choose_default_y(schema)}
-- Show bottom 5 {choose_default_x(schema)} by {choose_default_y(schema)}
-- Now show the same analysis as a pie chart
-- Instead, make it average by {choose_default_x(schema)}
-"""
+        "\n".join(f"- {question}" for question in example_questions)
     )
 
 where_clause, where_params = build_where_clause(active_filters)
