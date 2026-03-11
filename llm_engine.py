@@ -62,6 +62,7 @@ def interpret_query(prompt, columns):
         "Return JSON only with keys x_column, y_column, aggregation, chart_type. "
         "Use only listed columns. Aggregation must be one of sum, mean, count, max, min. "
         "Chart_type must be one of bar, line, pie, scatter, histogram, treemap, funnel, heatmap, waterfall, gauge. "
+        "If the query is invalid, unrelated to the dataset, or does not map to the schema, return empty strings for x_column and y_column. "
         "Choose columns that best match the query meaning and the provided schema labels. "
         f"Columns: {compact_columns}. "
         f"Query: {str(prompt)[:300]}"
@@ -76,11 +77,6 @@ def interpret_query(prompt, columns):
             value = parsed.get(key)
             if isinstance(value, str):
                 result[key] = value.strip()
-
-    if not result["x_column"] and columns:
-        result["x_column"] = str(columns[0])
-    if not result["y_column"] and columns:
-        result["y_column"] = str(columns[-1])
 
     return result
 

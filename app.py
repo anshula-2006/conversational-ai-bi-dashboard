@@ -617,6 +617,17 @@ def coerce_analysis(prompt, analysis, schema):
     }
 
 
+def is_invalid_query(prompt, raw_analysis, schema):
+    inferred_x, inferred_y = infer_columns_from_prompt(prompt, schema)
+    llm_x = resolve_column(raw_analysis.get("x_column"), schema["columns"])
+    llm_y = resolve_column(raw_analysis.get("y_column"), schema["columns"])
+
+    if is_follow_up_prompt(prompt) and st.session_state.get("last_analysis"):
+        return False
+
+    return inferred_x is None and inferred_y is None and llm_x is None and llm_y is None
+
+
 def merge_follow_up_analysis(prompt, analysis, schema):
     previous = st.session_state.get("last_analysis")
     if not previous or not is_follow_up_prompt(prompt):
@@ -1012,51 +1023,42 @@ if prompt:
     if not st.session_state.history or st.session_state.history[-1] != prompt:
         st.session_state.history.append(prompt)
 
+    invalid_query = False
     with st.spinner("AI analyzing data..."):
         analysis_mode = infer_analysis_mode(prompt)
         schema_columns = list(schema["columns"])
         raw_analysis = interpret_query(prompt, schema_columns)
-        analysis = coerce_analysis(prompt, raw_analysis, schema)
-        analysis = merge_follow_up_analysis(prompt, analysis, schema)
-        result_limit, sort_direction = infer_limit(prompt)
-        date_grain = infer_date_grain(prompt, analysis["x_column"], schema)
+        invalid_query = is_invalid_query(prompt, raw_analysis, schema)
 
-        if analysis_mode == "detail":
-            data = query_detail_data(connection, schema, active_filters, limit=result_limit or 50)
-            x_column = resolve_column(analysis["x_column"], schema["columns"]) or choose_default_x(schema)
-            y_column = resolve_column(analysis["y_column"], schema["columns"]) or choose_default_y(schema)
-            value_column = y_column
-            chart_type = "scatter" if y_column in data.columns else "bar"
-            auto_chart = chart_type
-            ranked_data, trend_data = build_supporting_views(data.head(10), x_column, value_column)
-            metrics = build_summary_metrics(data, value_column) if value_column in data.columns else {
-                "row_count": int(len(data)),
-                "total": 0.0,
-                "max": 0.0,
-                "avg": 0.0,
-            }
-            insight = "Showing raw records instead of aggregated results based on the query wording."
-            resolution_note = "This query was interpreted as a detail request, so the dashboard is showing raw dataset rows."
-            query_interpretation = build_query_interpretation(analysis, value_column, auto_chart)
-            confidence_score = compute_confidence(analysis)
-            chart_reason = "Scatter view was selected to preview raw values without aggregating them."
-            display_x = format_metric_label(x_column)
-            display_y = format_metric_label(value_column)
-            fig = generate_chart(data.head(25), chart_type, x_column, value_column)
-        else:
-            data, value_column, x_column, y_column = aggregate_data(
-                connection,
-                schema,
-                analysis["x_column"],
-                analysis["y_column"],
-                analysis["aggregation"],
-                active_filters,
-                date_grain=date_grain,
-                result_limit=result_limit,
-                sort_direction=sort_direction,
-            )
-            if should_use_mean_fallback(prompt, y_column, analysis["aggregation"], data, value_column):
-                analysis["aggregation"] = "mean"
+        if not invalid_query:
+            analysis = coerce_analysis(prompt, raw_analysis, schema)
+            analysis = merge_follow_up_analysis(prompt, analysis, schema)
+            result_limit, sort_direction = infer_limit(prompt)
+            date_grain = infer_date_grain(prompt, analysis["x_column"], schema)
+
+            if analysis_mode == "detail":
+                data = query_detail_data(connection, schema, active_filters, limit=result_limit or 50)
+                x_column = resolve_column(analysis["x_column"], schema["columns"]) or choose_default_x(schema)
+                y_column = resolve_column(analysis["y_column"], schema["columns"]) or choose_default_y(schema)
+                value_column = y_column
+                chart_type = "scatter" if y_column in data.columns else "bar"
+                auto_chart = chart_type
+                ranked_data, trend_data = build_supporting_views(data.head(10), x_column, value_column)
+                metrics = build_summary_metrics(data, value_column) if value_column in data.columns else {
+                    "row_count": int(len(data)),
+                    "total": 0.0,
+                    "max": 0.0,
+                    "avg": 0.0,
+                }
+                insight = "Showing raw records instead of aggregated results based on the query wording."
+                resolution_note = "This query was interpreted as a detail request, so the dashboard is showing raw dataset rows."
+                query_interpretation = build_query_interpretation(analysis, value_column, auto_chart)
+                confidence_score = compute_confidence(analysis)
+                chart_reason = "Scatter view was selected to preview raw values without aggregating them."
+                display_x = format_metric_label(x_column)
+                display_y = format_metric_label(value_column)
+                fig = generate_chart(data.head(25), chart_type, x_column, value_column)
+            else:
                 data, value_column, x_column, y_column = aggregate_data(
                     connection,
                     schema,
@@ -1068,129 +1070,150 @@ if prompt:
                     result_limit=result_limit,
                     sort_direction=sort_direction,
                 )
+                if should_use_mean_fallback(prompt, y_column, analysis["aggregation"], data, value_column):
+                    analysis["aggregation"] = "mean"
+                    data, value_column, x_column, y_column = aggregate_data(
+                        connection,
+                        schema,
+                        analysis["x_column"],
+                        analysis["y_column"],
+                        analysis["aggregation"],
+                        active_filters,
+                        date_grain=date_grain,
+                        result_limit=result_limit,
+                        sort_direction=sort_direction,
+                    )
 
-            auto_chart = infer_auto_chart(x_column, analysis["aggregation"], data)
-            prompt_chart = infer_chart_type_from_prompt(prompt)
-            llm_chart = analysis["chart_type"] if analysis.get("chart_type") not in {"", "bar"} else None
-            chart_type = chart_override.lower() if chart_override != "Auto" else prompt_chart or auto_chart or llm_chart or "bar"
+                auto_chart = infer_auto_chart(x_column, analysis["aggregation"], data)
+                prompt_chart = infer_chart_type_from_prompt(prompt)
+                llm_chart = analysis["chart_type"] if analysis.get("chart_type") not in {"", "bar"} else None
+                chart_type = chart_override.lower() if chart_override != "Auto" else prompt_chart or auto_chart or llm_chart or "bar"
 
-            fig = generate_chart(data, chart_type, x_column, value_column)
-            ranked_data, trend_data = build_supporting_views(data, x_column, value_column)
-            metrics = build_summary_metrics(data, value_column)
-            insight = generate_insight(prompt, x_column, analysis["aggregation"], metrics)
-            resolution_note = build_resolution_note(analysis, prompt, schema)
-            query_interpretation = build_query_interpretation(analysis, value_column, auto_chart)
-            confidence_score = compute_confidence(analysis)
-            chart_reason = explain_chart_choice(chart_type, x_column, data)
-            display_x = format_metric_label(x_column)
-            display_y = format_metric_label(value_column)
-
-    st.session_state.last_analysis = {
-        "x_column": x_column,
-        "y_column": y_column,
-        "aggregation": analysis["aggregation"],
-        "chart_type": chart_type,
-    }
-
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Primary Visual</div>', unsafe_allow_html=True)
-    col1, col2 = st.columns([2.2, 1], gap="large")
-
-    with col1:
-        st.plotly_chart(fig, use_container_width=True, key="primary_visual_chart")
-
-    with col2:
-        st.subheader("AI Insight")
-        st.write(insight)
-        st.info(resolution_note)
-        if confidence_score < 0.6:
-            st.warning(f"Low mapping confidence: {confidence_score:.0%}. Refine the metric or grouping field for a more precise result.")
+                fig = generate_chart(data, chart_type, x_column, value_column)
+                ranked_data, trend_data = build_supporting_views(data, x_column, value_column)
+                metrics = build_summary_metrics(data, value_column)
+                insight = generate_insight(prompt, x_column, analysis["aggregation"], metrics)
+                resolution_note = build_resolution_note(analysis, prompt, schema)
+                query_interpretation = build_query_interpretation(analysis, value_column, auto_chart)
+                confidence_score = compute_confidence(analysis)
+                chart_reason = explain_chart_choice(chart_type, x_column, data)
+                display_x = format_metric_label(x_column)
+                display_y = format_metric_label(value_column)
         else:
-            st.success(f"Mapping confidence: {confidence_score:.0%}")
-        st.caption(
-            f"Using x: {display_x} ({analysis['source_x']}), y: {display_y} ({analysis['source_y']}), agg: {analysis['aggregation']}"
-        )
-        st.caption(f"Auto chart recommendation: {auto_chart}")
-        st.caption(chart_reason)
-    st.markdown("</div>", unsafe_allow_html=True)
+            st.session_state.last_analysis = None
 
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Executive Summary</div>', unsafe_allow_html=True)
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Rows in Visual", metrics["row_count"])
-    k2.metric("Total", format_number(metrics["total"]))
-    k3.metric("Highest", format_number(metrics["max"]))
-    k4.metric("Average", format_number(metrics["avg"]))
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    if show_architecture:
+    if invalid_query:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Architecture Flow</div>', unsafe_allow_html=True)
-        flow_a, flow_b, flow_c, flow_d = st.columns(4)
-        flow_a.metric("1", "Prompt")
-        flow_b.metric("2", "LLM Parse")
-        flow_c.metric("3", "SQLite Query")
-        flow_d.metric("4", "Plotly Dashboard")
-        st.caption(
-            "User query is mapped to schema fields, validated against the uploaded dataset, aggregated with SQL over SQLite, and rendered as interactive visuals."
-        )
+        st.markdown('<div class="section-title">Query Result</div>', unsafe_allow_html=True)
+        st.write("This is an invalid query.")
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.session_state.last_analysis = {
+            "x_column": x_column,
+            "y_column": y_column,
+            "aggregation": analysis["aggregation"],
+            "chart_type": chart_type,
+        }
+
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Primary Visual</div>', unsafe_allow_html=True)
+        col1, col2 = st.columns([2.2, 1], gap="large")
+
+        with col1:
+            st.plotly_chart(fig, use_container_width=True, key="primary_visual_chart")
+
+        with col2:
+            st.subheader("AI Insight")
+            st.write(insight)
+            st.info(resolution_note)
+            if confidence_score < 0.6:
+                st.warning(f"Low mapping confidence: {confidence_score:.0%}. Refine the metric or grouping field for a more precise result.")
+            else:
+                st.success(f"Mapping confidence: {confidence_score:.0%}")
+            st.caption(
+                f"Using x: {display_x} ({analysis['source_x']}), y: {display_y} ({analysis['source_y']}), agg: {analysis['aggregation']}"
+            )
+            st.caption(f"Auto chart recommendation: {auto_chart}")
+            st.caption(chart_reason)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Analysis Workspace</div>', unsafe_allow_html=True)
-    tab_overview, tab_supporting, tab_details, tab_export = st.tabs(
-        ["Interpretation", "Supporting Visuals", "Detail Table", "Export"]
-    )
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Executive Summary</div>', unsafe_allow_html=True)
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Rows in Visual", metrics["row_count"])
+        k2.metric("Total", format_number(metrics["total"]))
+        k3.metric("Highest", format_number(metrics["max"]))
+        k4.metric("Average", format_number(metrics["avg"]))
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    with tab_overview:
-        st.dataframe(query_interpretation, use_container_width=True, hide_index=True)
-        meta_left, meta_right = st.columns(2)
-        with meta_left:
-            if date_grain:
-                st.caption(f"Time grouping applied: {date_grain}")
-        with meta_right:
-            if result_limit:
-                limit_label = "top" if sort_direction == "desc" else "bottom"
-                st.caption(f"Result shaping applied: {limit_label} {result_limit}")
-
-    with tab_supporting:
-        support_left, support_right = st.columns(2, gap="large")
-        with support_left:
-            st.markdown("Top Categories")
-            st.plotly_chart(
-                generate_chart(ranked_data, "bar", x_column, value_column),
-                use_container_width=True,
-                key="top_categories_chart",
+        if show_architecture:
+            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.markdown('<div class="section-title">Architecture Flow</div>', unsafe_allow_html=True)
+            flow_a, flow_b, flow_c, flow_d = st.columns(4)
+            flow_a.metric("1", "Prompt")
+            flow_b.metric("2", "LLM Parse")
+            flow_c.metric("3", "SQLite Query")
+            flow_d.metric("4", "Plotly Dashboard")
+            st.caption(
+                "User query is mapped to schema fields, validated against the uploaded dataset, aggregated with SQL over SQLite, and rendered as interactive visuals."
             )
-        with support_right:
-            st.markdown("Trend / Pattern View")
-            secondary_chart = "line" if trend_data[x_column].nunique(dropna=False) > 2 else "bar"
-            st.plotly_chart(
-                generate_chart(trend_data, secondary_chart, x_column, value_column),
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="section-card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Analysis Workspace</div>', unsafe_allow_html=True)
+        tab_overview, tab_supporting, tab_details, tab_export = st.tabs(
+            ["Interpretation", "Supporting Visuals", "Detail Table", "Export"]
+        )
+
+        with tab_overview:
+            st.dataframe(query_interpretation, use_container_width=True, hide_index=True)
+            meta_left, meta_right = st.columns(2)
+            with meta_left:
+                if date_grain:
+                    st.caption(f"Time grouping applied: {date_grain}")
+            with meta_right:
+                if result_limit:
+                    limit_label = "top" if sort_direction == "desc" else "bottom"
+                    st.caption(f"Result shaping applied: {limit_label} {result_limit}")
+
+        with tab_supporting:
+            support_left, support_right = st.columns(2, gap="large")
+            with support_left:
+                st.markdown("Top Categories")
+                st.plotly_chart(
+                    generate_chart(ranked_data, "bar", x_column, value_column),
+                    use_container_width=True,
+                    key="top_categories_chart",
+                )
+            with support_right:
+                st.markdown("Trend / Pattern View")
+                secondary_chart = "line" if trend_data[x_column].nunique(dropna=False) > 2 else "bar"
+                st.plotly_chart(
+                    generate_chart(trend_data, secondary_chart, x_column, value_column),
+                    use_container_width=True,
+                    key="trend_pattern_chart",
+                )
+
+        with tab_details:
+            st.dataframe(data, use_container_width=True, height=320)
+
+        with tab_export:
+            st.download_button(
+                label="Download Visual Data CSV",
+                data=data.to_csv(index=False).encode("utf-8"),
+                file_name="dashboard_visual_data.csv",
+                mime="text/csv",
                 use_container_width=True,
-                key="trend_pattern_chart",
             )
-
-    with tab_details:
-        st.dataframe(data, use_container_width=True, height=320)
-
-    with tab_export:
-        st.download_button(
-            label="Download Visual Data CSV",
-            data=data.to_csv(index=False).encode("utf-8"),
-            file_name="dashboard_visual_data.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
-        st.download_button(
-            label="Download Query Interpretation CSV",
-            data=query_interpretation.to_csv(index=False).encode("utf-8"),
-            file_name="query_interpretation.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
-        st.caption("Use this section during judging to show exactly how the query was translated into dashboard logic.")
-    st.markdown("</div>", unsafe_allow_html=True)
+            st.download_button(
+                label="Download Query Interpretation CSV",
+                data=query_interpretation.to_csv(index=False).encode("utf-8"),
+                file_name="query_interpretation.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+            st.caption("Use this section during judging to show exactly how the query was translated into dashboard logic.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 st.sidebar.markdown("### Query History")
 for index, query in enumerate(reversed(st.session_state.history[-10:])):
