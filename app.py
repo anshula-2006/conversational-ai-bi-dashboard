@@ -981,10 +981,7 @@ if prompt:
         st.session_state.history.append(prompt)
 
     with st.spinner("AI analyzing data..."):
-        schema_columns = [
-            f"{column} ({'numeric' if column in schema['numeric_columns'] else 'categorical'})"
-            for column in schema["columns"]
-        ]
+        schema_columns = list(schema["columns"])
         raw_analysis = interpret_query(prompt, schema_columns)
         analysis = coerce_analysis(prompt, raw_analysis, schema)
         analysis = merge_follow_up_analysis(prompt, analysis, schema)
