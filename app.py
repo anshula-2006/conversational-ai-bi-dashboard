@@ -219,6 +219,8 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "last_analysis" not in st.session_state:
     st.session_state.last_analysis = None
+if "prompt_input" not in st.session_state:
+    st.session_state.prompt_input = ""
 
 
 def normalize_identifier(value):
@@ -946,7 +948,7 @@ elif col_b.button("Count by Category"):
 elif col_c.button("Average Metric"):
     prompt = f"Show average {choose_default_y(schema)} by {choose_default_x(schema)}"
 else:
-    prompt = st.text_input("Ask a question")
+    prompt = st.text_input("Ask a question", key="prompt_input")
 
 with st.expander("Example Questions", expanded=True):
     example_questions = generate_example_questions(schema)
@@ -982,7 +984,8 @@ with preview_col:
     st.markdown("</div>", unsafe_allow_html=True)
 
 if prompt:
-    st.session_state.history.append(prompt)
+    if not st.session_state.history or st.session_state.history[-1] != prompt:
+        st.session_state.history.append(prompt)
 
     with st.spinner("AI analyzing data..."):
         schema_columns = [
@@ -1143,5 +1146,7 @@ if prompt:
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.sidebar.markdown("### Query History")
-for query in st.session_state.history[-10:]:
-    st.sidebar.write(query)
+for index, query in enumerate(reversed(st.session_state.history[-10:])):
+    if st.sidebar.button(query, key=f"history_query_{index}", use_container_width=True):
+        st.session_state.prompt_input = query
+        st.rerun()
