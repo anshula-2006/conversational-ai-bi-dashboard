@@ -674,7 +674,7 @@ def build_where_clause(filters):
 
 
 def query_dataset_preview(connection, table_name, where_clause, params):
-    query = f"SELECT * FROM {quote_identifier(table_name)}{where_clause} LIMIT 5"
+    query = f"SELECT * FROM {quote_identifier(table_name)}{where_clause}"
     return pd.read_sql_query(query, connection, params=params)
 
 
@@ -990,7 +990,7 @@ with overview_col:
 with preview_col:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Dataset Preview</div>', unsafe_allow_html=True)
-    st.dataframe(filtered_preview if not filtered_preview.empty else preview_df, use_container_width=True, height=220)
+    st.dataframe(filtered_preview if not filtered_preview.empty else preview_df, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 if prompt:
