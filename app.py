@@ -486,6 +486,15 @@ def infer_date_grain(prompt, x_column, schema):
     return None
 
 
+def infer_chart_type_from_prompt(prompt):
+    prompt_text = str(prompt).lower()
+    chart_keywords = ["bar", "line", "pie", "scatter", "histogram", "treemap", "funnel", "heatmap", "waterfall", "gauge"]
+    for chart_name in chart_keywords:
+        if chart_name in prompt_text:
+            return chart_name
+    return None
+
+
 def is_follow_up_prompt(prompt):
     prompt_text = str(prompt).lower().strip()
     markers = ["now", "also", "instead", "same", "that", "those", "switch", "change", "make it", "show it"]
@@ -934,7 +943,8 @@ if prompt:
         )
 
         auto_chart = infer_auto_chart(x_column, analysis["aggregation"], data)
-        chart_type = chart_override.lower() if chart_override != "Auto" else auto_chart
+        prompt_chart = infer_chart_type_from_prompt(prompt)
+        chart_type = chart_override.lower() if chart_override != "Auto" else prompt_chart or analysis["chart_type"] or auto_chart
 
         fig = generate_chart(data, chart_type, x_column, value_column)
         ranked_data, trend_data = build_supporting_views(data, x_column, value_column)
