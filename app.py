@@ -819,7 +819,7 @@ if prompt:
     col1, col2 = st.columns([2.2, 1], gap="large")
 
     with col1:
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="primary_visual_chart")
 
     with col2:
         st.subheader("AI Insight")
@@ -858,11 +858,19 @@ if prompt:
         support_left, support_right = st.columns(2, gap="large")
         with support_left:
             st.markdown("Top Categories")
-            st.plotly_chart(generate_chart(ranked_data, "bar", x_column, value_column), use_container_width=True)
+            st.plotly_chart(
+                generate_chart(ranked_data, "bar", x_column, value_column),
+                use_container_width=True,
+                key="top_categories_chart",
+            )
         with support_right:
             st.markdown("Trend / Pattern View")
             secondary_chart = "line" if trend_data[x_column].nunique(dropna=False) > 2 else "bar"
-            st.plotly_chart(generate_chart(trend_data, secondary_chart, x_column, value_column), use_container_width=True)
+            st.plotly_chart(
+                generate_chart(trend_data, secondary_chart, x_column, value_column),
+                use_container_width=True,
+                key="trend_pattern_chart",
+            )
 
     with tab_details:
         st.dataframe(data, use_container_width=True, height=320)
