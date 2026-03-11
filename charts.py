@@ -1,8 +1,16 @@
 import plotly.express as px
 import plotly.graph_objects as go
 
+def format_chart_label(label):
+    if str(label).strip().lower() == "duration":
+        return "Duration (days)"
+    return str(label)
+
+
 def generate_chart(data, chart_type, x, y):
     safe_chart = str(chart_type).lower()
+    display_x = format_chart_label(x)
+    display_y = format_chart_label(y)
     try:
         if safe_chart == "bar":
             fig = px.bar(data, x=x, y=y, color=x)
@@ -38,7 +46,7 @@ def generate_chart(data, chart_type, x, y):
                 go.Indicator(
                     mode="gauge+number",
                     value=gauge_value,
-                    title={"text": y},
+                    title={"text": display_y},
                     gauge={
                         "axis": {"range": [None, gauge_max]},
                         "bar": {"color": "#1f6aa5"},
@@ -53,12 +61,12 @@ def generate_chart(data, chart_type, x, y):
         template="plotly_white",
         height=500,
         margin=dict(l=20, r=20, t=60, b=20),
-        title=dict(text=f"{y} by {x}", x=0.02, xanchor="left"),
+        title=dict(text=f"{display_y} by {display_x}", x=0.02, xanchor="left"),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        legend_title_text=x,
+        legend_title_text=display_x,
     )
     if safe_chart != "gauge":
-        fig.update_xaxes(title_text=x, showgrid=False)
-        fig.update_yaxes(title_text=y, gridcolor="rgba(22, 62, 98, 0.08)")
+        fig.update_xaxes(title_text=display_x, showgrid=False)
+        fig.update_yaxes(title_text=display_y, gridcolor="rgba(22, 62, 98, 0.08)")
     return fig

@@ -695,6 +695,12 @@ def format_number(value):
     return f"{value:,.2f}"
 
 
+def format_metric_label(label):
+    if str(label).strip().lower() == "duration":
+        return "Duration (days)"
+    return str(label)
+
+
 def infer_auto_chart(x_column, aggregation, grouped_data):
     lowered_name = x_column.lower()
     unique_groups = grouped_data[x_column].nunique(dropna=False) if x_column in grouped_data.columns else 0
@@ -742,8 +748,8 @@ def compute_confidence(analysis):
 def build_query_interpretation(analysis, value_column, auto_chart):
     return pd.DataFrame(
         [
-            {"Component": "Grouping Field", "Selection": analysis["x_column"]},
-            {"Component": "Metric Field", "Selection": value_column},
+            {"Component": "Grouping Field", "Selection": format_metric_label(analysis["x_column"])},
+            {"Component": "Metric Field", "Selection": format_metric_label(value_column)},
             {"Component": "Aggregation", "Selection": analysis["aggregation"]},
             {"Component": "Chart Type", "Selection": auto_chart if auto_chart else analysis["chart_type"]},
             {"Component": "Grouping Source", "Selection": analysis["source_x"]},
@@ -948,6 +954,8 @@ if prompt:
         query_interpretation = build_query_interpretation(analysis, value_column, auto_chart)
         confidence_score = compute_confidence(analysis)
         chart_reason = explain_chart_choice(chart_type, x_column, data)
+        display_x = format_metric_label(x_column)
+        display_y = format_metric_label(value_column)
 
     st.session_state.last_analysis = {
         "x_column": x_column,
@@ -971,7 +979,7 @@ if prompt:
         else:
             st.success(f"Mapping confidence: {confidence_score:.0%}")
         st.caption(
-            f"Using x: {x_column} ({analysis['source_x']}), y: {value_column} ({analysis['source_y']}), agg: {analysis['aggregation']}"
+            f"Using x: {display_x} ({analysis['source_x']}), y: {display_y} ({analysis['source_y']}), agg: {analysis['aggregation']}"
         )
         st.caption(f"Auto chart recommendation: {auto_chart}")
         st.caption(chart_reason)
