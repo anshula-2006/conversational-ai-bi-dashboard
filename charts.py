@@ -139,8 +139,8 @@ def generate_chart(data, chart_type, x, y):
 
     fig.update_layout(
         template="plotly_white",
-        height=520,
-        margin=dict(l=24, r=24, t=72, b=28),
+        height=580,
+        margin=dict(l=36, r=36, t=80, b=52),
         title=dict(text=title_text, x=0.02, xanchor="left", font=dict(size=22, color=TEXT_COLOR)),
         paper_bgcolor=PAPER_BG,
         plot_bgcolor=PAPER_BG,
@@ -158,8 +158,6 @@ def generate_chart(data, chart_type, x, y):
         fig.update_traces(
             marker_line_color="rgba(255,255,255,0.85)",
             marker_line_width=1.4,
-            texttemplate="%{x:,.0f}",
-            textposition="outside",
             hovertemplate=f"{display_x}: %{{y}}<br>{display_y}: %{{x:,.2f}}<extra></extra>",
         )
         fig.update_xaxes(title_text=display_y, showgrid=True, gridcolor=GRID_COLOR)
@@ -183,9 +181,9 @@ def generate_chart(data, chart_type, x, y):
         )
     elif safe_chart == "pie":
         fig.update_traces(
-            textposition="inside",
-            textinfo="percent",
-            textfont=dict(size=13, color="white"),
+            textposition="outside",
+            textinfo="label+percent",
+            textfont=dict(size=12, color=TEXT_COLOR),
             hole=0.42,
             marker=dict(line=dict(color="white", width=2)),
             pull=[0.04] + [0.01] * max(len(plot_data) - 1, 0),
@@ -194,7 +192,9 @@ def generate_chart(data, chart_type, x, y):
         )
         fig.update_layout(
             legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02),
-            margin=dict(l=20, r=120, t=72, b=24),
+            margin=dict(l=30, r=150, t=80, b=40),
+            uniformtext_minsize=10,
+            uniformtext_mode="hide",
             annotations=[
                 dict(
                     text=display_y,
@@ -210,7 +210,7 @@ def generate_chart(data, chart_type, x, y):
         fig.update_layout(showlegend=False)
     elif safe_chart == "treemap":
         fig.update_traces(
-            textinfo="label+percent entry",
+            textinfo="label",
             marker=dict(line=dict(width=2, color="white")),
             hovertemplate=f"{display_x}: %{{label}}<br>{display_y}: %{{value:,.2f}}<extra></extra>",
         )
