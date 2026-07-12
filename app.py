@@ -251,7 +251,7 @@ def prepare_database(file_bytes, file_name):
             if column in numeric_columns:
                 continue
             if chunk[column].dtype == "object" or "date" in column.lower() or "time" in column.lower():
-                parsed = pd.to_datetime(chunk[column], errors="coerce")
+                parsed = pd.to_datetime(chunk[column], errors="coerce", format="mixed")
                 if parsed.notna().mean() >= 0.8:
                     chunk[column] = parsed.dt.strftime("%Y-%m-%d")
                     detected_dates.append(column)
@@ -782,12 +782,12 @@ def should_use_mean_fallback(prompt, y_column, aggregation, grouped_data, value_
         return False
     if not any(token in prompt_text for token in ["highest", "lowest", "top", "bottom", "best", "worst"]):
         return False
-    numeric_series = pd.to_numeric(grouped_data[value_column], errors="coerce").dropna()
+    numeric_series = pd.to_numeric(grouped_data[value_column], errors="coerce", format="mixed").dropna()
     return numeric_series.nunique() <= 1
 
 
 def build_summary_metrics(dataframe, value_column):
-    numeric_series = pd.to_numeric(dataframe[value_column], errors="coerce").fillna(0)
+    numeric_series = pd.to_numeric(dataframe[value_column], errors="coerce", format="mixed").fillna(0)
     return {
         "row_count": int(len(dataframe)),
         "total": float(numeric_series.sum()),
