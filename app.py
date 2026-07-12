@@ -1016,7 +1016,7 @@ with overview_col:
 with preview_col:
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.markdown('<div class="section-title">Dataset Preview</div>', unsafe_allow_html=True)
-    st.dataframe(filtered_preview if not filtered_preview.empty else preview_df, use_container_width=True)
+    st.dataframe(filtered_preview if not filtered_preview.empty else preview_df, width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)
 
 if prompt:
@@ -1120,7 +1120,7 @@ if prompt:
         col1, col2 = st.columns([2.2, 1], gap="large")
 
         with col1:
-            st.plotly_chart(fig, use_container_width=True, key="primary_visual_chart")
+            st.plotly_chart(fig, width="stretch", key="primary_visual_chart")
 
         with col2:
             st.subheader("AI Insight")
@@ -1166,7 +1166,7 @@ if prompt:
         )
 
         with tab_overview:
-            st.dataframe(query_interpretation, use_container_width=True, hide_index=True)
+            st.dataframe(query_interpretation, width="stretch", hide_index=True)
             meta_left, meta_right = st.columns(2)
             with meta_left:
                 if date_grain:
@@ -1182,7 +1182,7 @@ if prompt:
                 st.markdown("Top Categories")
                 st.plotly_chart(
                     generate_chart(ranked_data, "bar", x_column, value_column),
-                    use_container_width=True,
+                    width="stretch",
                     key="top_categories_chart",
                 )
             with support_right:
@@ -1190,12 +1190,12 @@ if prompt:
                 secondary_chart = "line" if trend_data[x_column].nunique(dropna=False) > 2 else "bar"
                 st.plotly_chart(
                     generate_chart(trend_data, secondary_chart, x_column, value_column),
-                    use_container_width=True,
+                    width="stretch",
                     key="trend_pattern_chart",
                 )
 
         with tab_details:
-            st.dataframe(data, use_container_width=True, height=320)
+            st.dataframe(data, width="stretch", height=320)
 
         with tab_export:
             st.download_button(
@@ -1203,20 +1203,20 @@ if prompt:
                 data=data.to_csv(index=False).encode("utf-8"),
                 file_name="dashboard_visual_data.csv",
                 mime="text/csv",
-                use_container_width=True,
+                width="stretch",
             )
             st.download_button(
                 label="Download Query Interpretation CSV",
                 data=query_interpretation.to_csv(index=False).encode("utf-8"),
                 file_name="query_interpretation.csv",
                 mime="text/csv",
-                use_container_width=True,
+                width="stretch",
             )
             st.caption("Use this section during judging to show exactly how the query was translated into dashboard logic.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.sidebar.markdown("### Query History")
 for index, query in enumerate(reversed(st.session_state.history[-10:])):
-    if st.sidebar.button(query, key=f"history_query_{index}", use_container_width=True):
+    if st.sidebar.button(query, key=f"history_query_{index}", width="stretch"):
         st.session_state.prompt_input = query
         st.rerun()
